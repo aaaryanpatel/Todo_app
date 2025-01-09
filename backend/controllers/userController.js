@@ -1,5 +1,5 @@
 import User from "../model/user.js"
-
+import bcrypt from 'bcrypt';
 
 export const signup = async(req,res)=>{
     try {  
@@ -17,23 +17,60 @@ export const signup = async(req,res)=>{
                 msg:"Email already exist"
             })
         }
+        const hashedPassword = await bcrypt.hash(password,12)
         if (!user){
         await User.create({
             userName,
             email,
-            password
+            password:hashedPassword
         })
         }
         return res.status(200).json({
             message: "user created",
-            user:true
+            success:true
         })
         
     } catch (error) {
-        console.log(error.message)
+        res.status(500).json({
+            message: "Internal server error"
+        })
     }
 }
 
-export const login = (req,res) => {
-    
+export const login = async(req,res) => {
+    try {
+        const {email,password} = req.body;
+        console.log(req.body)
+        if(!email || !password) {
+            return res.status(409).json({
+                message: "All field are required",
+                success: false
+            })
+        }
+        const user = await User.findOne({email})
+        if (!user){
+            return res.status(403).json({
+                message: "Your email or password is incorrect!",
+                success: false
+            })
+        }
+
+        const isPasswordMatched = await bcrypt.compare(password,user.password)
+        if(!isPasswordMatched) {
+            return res.status(403).json({
+                message: "Your password is incorrect!",
+                success:false
+            })
+        }
+
+        return res.status(200).json({
+            message:"User logged in",
+            success: true
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Internal server error"
+        })
+    }
 }
